@@ -25,12 +25,15 @@ func newLogger() fiber.Handler {
 }
 
 func Log(ctx *fiber.Ctx) *logrus.Entry {
-	user := fileshare.UserFromContext(ctx)
-
 	entry := logrus.WithField("method", ctx.Method()).
 		WithField("path", ctx.Path()).
-		WithField("status", ctx.Response().StatusCode()).
-		WithField("auth", user != nil)
+		WithField("status", ctx.Response().StatusCode())
+
+	if user := fileshare.UserFromContext(ctx); user != nil {
+		entry = entry.WithField("user", user.Nickname)
+	} else {
+		entry = entry.WithField("user", nil)
+	}
 
 	return entry
 }
