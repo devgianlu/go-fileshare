@@ -43,6 +43,13 @@ func NewHTTPServer(port int, auth fileshare.AuthProvider) fileshare.HttpServer {
 	)
 
 	s.app.Get("/", s.handleIndex)
+	s.app.Get("/login", s.handleLogin)
+	s.app.Post("/login", s.handlePostLogin)
+	s.app.Get("/logout", s.handleLogout)
+	s.app.Use(func(ctx *fiber.Ctx) error {
+		ctx.Status(fiber.StatusNotFound)
+		return nil
+	})
 
 	return &s
 }

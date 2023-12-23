@@ -1,0 +1,13 @@
+{{define "login"}}
+    {{template "header" .}}
+    <div>
+        <form method="post">
+            <label>
+                Nickname
+                <input type="text" name="nickname" placeholder="Nickname">
+            </label>
+            <button>Login</button>
+        </form>
+    </div>
+    {{template "footer" .}}
+{{end}}

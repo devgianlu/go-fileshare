@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const authTokenCookieName = "token"
+
 func (s *httpServer) getUser(authHeader string, authCookie string) (*fileshare.User, error) {
 	var token string
 	if len(authHeader) > 0 {
@@ -39,7 +41,7 @@ func (s *httpServer) getUser(authHeader string, authCookie string) (*fileshare.U
 
 func (s *httpServer) newAuthHandler() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		if user, err := s.getUser(ctx.Get("Authorization"), ctx.Cookies("token")); err != nil {
+		if user, err := s.getUser(ctx.Get("Authorization"), ctx.Cookies(authTokenCookieName)); err != nil {
 			return err
 		} else if user != nil {
 			fileshare.SetContextWithUser(ctx, user)

@@ -1,5 +1,17 @@
-<html lang="en">
-<body>
-<!-- TODO -->
-</body>
-</html>
+{{define "index"}}
+    {{template "header" .}}
+    <div>
+        <h3>Authentication</h3>
+        {{if .User }}
+            <p>Logged in as <b>{{.User.Nickname}}</b></p>
+            <form action="/logout">
+                <button>Logout</button>
+            </form>
+        {{else}}
+            <form action="/login">
+                <button>Login</button>
+            </form>
+        {{end}}
+    </div>
+    {{template "footer" .}}
+{{end}}
