@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	"github.com/golang-jwt/jwt/v5"
+	"time"
 )
 
 type customClaims struct {
@@ -35,12 +36,36 @@ func (p *jwtAuthProvider) GetUser(tokenString string) (*fileshare.User, error) {
 	}
 
 	claims := token.Claims.(*customClaims)
-	return &fileshare.User{Permissions: claims.Permissions}, nil
+	return &fileshare.User{Nickname: claims.Subject, Permissions: claims.Permissions}, nil
+}
+
+func (p *jwtAuthProvider) GetToken(user *fileshare.User) (string, error) {
+	now := time.Now()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   user.Nickname,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
+		},
+		Permissions: user.Permissions,
+	})
+
+	tokenString, err := token.SignedString(p.secret)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }
 
 func NewJWTAuthProvider(secret []byte) fileshare.AuthProvider {
 	p := jwtAuthProvider{}
 	p.secret = secret
-	p.parser = jwt.NewParser()
+	p.parser = jwt.NewParser(
+		jwt.WithIssuedAt(),
+		jwt.WithExpirationRequired(),
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
+	)
 	return &p
 }

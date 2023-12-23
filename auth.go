@@ -7,4 +7,5 @@ var ErrAuthInvalid = errors.New("invalid authentication token")
 
 type AuthProvider interface {
 	GetUser(jwt string) (*User, error)
+	GetToken(user *User) (string, error)
 }
