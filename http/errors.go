@@ -35,6 +35,10 @@ func asHttpError(err error) (bool, int, string) {
 func newErrorHandler() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		err := ctx.Next()
+		if err == nil {
+			return nil
+		}
+
 		if ok, statusCode, message := asHttpError(err); ok {
 			// set status code and message header
 			ctx.Status(statusCode)
@@ -45,6 +49,7 @@ func newErrorHandler() fiber.Handler {
 		}
 
 		// unhandled error, let it propagate
+		ctx.Status(fiber.StatusInternalServerError)
 		return err
 	}
 }
