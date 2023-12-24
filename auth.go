@@ -6,6 +6,6 @@ var ErrAuthMalformed = errors.New("malformed authentication token")
 var ErrAuthInvalid = errors.New("invalid authentication token")
 
 type AuthProvider interface {
-	GetUser(jwt string) (*User, error)
-	GetToken(user *User) (string, error)
+	GetUser(jwt string) (string, error)
+	GetToken(nickname string) (string, error)
 }

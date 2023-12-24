@@ -27,13 +27,20 @@ func (s *httpServer) getUser(authHeader string, authCookie string) (*fileshare.U
 		return nil, nil
 	}
 
-	user, err := s.auth.GetUser(token)
+	nickname, err := s.auth.GetUser(token)
 	if errors.Is(err, fileshare.ErrAuthMalformed) {
 		return nil, newHttpError(fiber.StatusBadRequest, "malformed bearer token", err)
 	} else if errors.Is(err, fileshare.ErrAuthInvalid) {
 		return nil, newHttpError(fiber.StatusUnauthorized, "invalid bearer token", err)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed authenticating: %w", err)
+	}
+
+	user, err := s.users.GetUser(nickname)
+	if err != nil {
+		return nil, fmt.Errorf("failed authenticating: %w", err)
+	} else if user == nil {
+		return nil, newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", nickname))
 	}
 
 	return user, nil

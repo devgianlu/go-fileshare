@@ -9,7 +9,8 @@ import (
 
 type customClaims struct {
 	jwt.RegisteredClaims
-	Permissions []string `json:"permissions"`
+
+	// TODO: perhaps support anonymous user JWT without a subject?
 }
 
 type jwtAuthProvider struct {
@@ -25,30 +26,29 @@ func (p *jwtAuthProvider) keyFunc(token *jwt.Token) (interface{}, error) {
 	return p.secret, nil
 }
 
-func (p *jwtAuthProvider) GetUser(tokenString string) (*fileshare.User, error) {
+func (p *jwtAuthProvider) GetUser(tokenString string) (string, error) {
 	token, err := p.parser.ParseWithClaims(tokenString, &customClaims{}, p.keyFunc)
 	if err != nil {
-		return nil, fileshare.NewError("", fileshare.ErrAuthMalformed, err)
+		return "", fileshare.NewError("", fileshare.ErrAuthMalformed, err)
 	}
 
 	if !token.Valid {
-		return nil, fileshare.NewError("", fileshare.ErrAuthInvalid, err)
+		return "", fileshare.NewError("", fileshare.ErrAuthInvalid, err)
 	}
 
 	claims := token.Claims.(*customClaims)
-	return &fileshare.User{Nickname: claims.Subject, Permissions: claims.Permissions}, nil
+	return claims.Subject, nil
 }
 
-func (p *jwtAuthProvider) GetToken(user *fileshare.User) (string, error) {
+func (p *jwtAuthProvider) GetToken(nickname string) (string, error) {
 	now := time.Now()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   user.Nickname,
+			Subject:   nickname,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
 		},
-		Permissions: user.Permissions,
 	})
 
 	tokenString, err := token.SignedString(p.secret)

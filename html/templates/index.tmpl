@@ -4,6 +4,7 @@
         <h3>Authentication</h3>
         {{if .User }}
             <p>Logged in as <b>{{.User.Nickname}}</b></p>
+            <p>Admin: <b>{{.User.Admin}}</b></p>
             <form action="/logout">
                 <button>Logout</button>
             </form>

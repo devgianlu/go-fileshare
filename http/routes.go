@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	"github.com/gofiber/fiber/v2"
 	"time"
@@ -31,9 +32,15 @@ func (s *httpServer) handlePostLogin(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	token, err := s.auth.GetToken(&fileshare.User{
-		Nickname: body.Nickname,
-	})
+	// TODO: implement some sort of authentication
+	user, err := s.users.GetUser(body.Nickname)
+	if err != nil {
+		return err
+	} else if user == nil {
+		return newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", body.Nickname))
+	}
+
+	token, err := s.auth.GetToken(user.Nickname)
 	if err != nil {
 		return err
 	}

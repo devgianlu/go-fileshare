@@ -12,6 +12,8 @@ type Config struct {
 	Port     int
 	Secret   string
 	LogLevel string
+
+	Users []fileshare.User
 }
 
 func loadConfig() (*Config, error) {
@@ -39,8 +41,9 @@ func loadConfig() (*Config, error) {
 }
 
 type Server struct {
-	Auth fileshare.AuthProvider
-	HTTP fileshare.HttpServer
+	Users fileshare.UsersProvider
+	Auth  fileshare.AuthProvider
+	HTTP  fileshare.HttpServer
 }
 
 func main() {
@@ -57,8 +60,9 @@ func main() {
 	log.SetLevel(logLevel)
 
 	s := Server{}
+	s.Users = auth.NewConfigUsersProvider(cfg.Users)
 	s.Auth = auth.NewJWTAuthProvider([]byte(cfg.Secret))
-	s.HTTP = http.NewHTTPServer(cfg.Port, s.Auth)
+	s.HTTP = http.NewHTTPServer(cfg.Port, s.Users, s.Auth)
 
 	if err := s.HTTP.ListenForever(); err != nil {
 		log.WithError(err).Fatalf("failed listening")
