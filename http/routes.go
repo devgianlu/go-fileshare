@@ -4,14 +4,28 @@ import (
 	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	"github.com/gofiber/fiber/v2"
+	"io/fs"
 	"time"
 )
 
+type indexViewData struct {
+	User  *fileshare.User
+	Files []fs.DirEntry
+}
+
 func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 	user := fileshare.UserFromContext(ctx)
-	return ctx.Render("index", &fiber.Map{
-		"User": user,
-	})
+
+	var files []fs.DirEntry
+	if user != nil {
+		var err error
+		files, err = s.storage.ReadDir(".", user)
+		if err != nil {
+			return err
+		}
+	}
+
+	return ctx.Render("index", &indexViewData{User: user, Files: files})
 }
 
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {

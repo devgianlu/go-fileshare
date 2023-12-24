@@ -59,7 +59,11 @@ func (p *jwtAuthProvider) GetToken(nickname string) (string, error) {
 	return tokenString, nil
 }
 
-func NewJWTAuthProvider(secret []byte) fileshare.AuthProvider {
+func NewJWTAuthProvider(secret []byte) (fileshare.AuthProvider, error) {
+	if len(secret) == 0 {
+		return nil, fmt.Errorf("missing secret")
+	}
+
 	p := jwtAuthProvider{}
 	p.secret = secret
 	p.parser = jwt.NewParser(
@@ -67,5 +71,5 @@ func NewJWTAuthProvider(secret []byte) fileshare.AuthProvider {
 		jwt.WithExpirationRequired(),
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
 	)
-	return &p
+	return &p, nil
 }
