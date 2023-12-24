@@ -6,39 +6,33 @@ import (
 	"github.com/devgianlu/go-fileshare/http"
 	"github.com/devgianlu/go-fileshare/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
+	"os"
 )
 
 type Config struct {
-	Port     int
-	Secret   string
-	Path     string
-	LogLevel string
+	Port     int    `yaml:"port"`
+	Secret   string `yaml:"secret"`
+	Path     string `yaml:"path"`
+	LogLevel string `yaml:"log_level"`
 
-	DefaultACL []fileshare.PathACL `mapstructure:"default_acl"`
+	DefaultACL []fileshare.PathACL `yaml:"default_acl"`
 
-	Users []fileshare.User
+	Users []fileshare.User `yaml:"users"`
 }
 
 func loadConfig() (*Config, error) {
-	viper.SetDefault("logLevel", "info")
-
-	// load config from local "server.yml" file
-	viper.AddConfigPath(".")
-	viper.SetConfigName("server")
-	viper.SetConfigType("yml")
-
-	// try to load from env
-	viper.SetEnvPrefix("FILESHARE_")
-	viper.AutomaticEnv()
-
-	// load from file
-	if err := viper.ReadInConfig(); err != nil {
+	f, err := os.OpenFile("server.yml", os.O_RDONLY, 0000)
+	if err != nil {
 		return nil, err
 	}
 
+	defer func() { _ = f.Close() }()
+
+	dec := yaml.NewDecoder(f)
+
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := dec.Decode(&cfg); err != nil {
 		return nil, err
 	}
 
