@@ -15,13 +15,6 @@
         {{end}}
     </div>
     <hr>
-    <div>
-        <h3>Files</h3>
-        <ul>
-            {{range .Files}}
-                <li>{{.Name}}</li>
-            {{end}}
-        </ul>
-    </div>
+    {{template "_files" .}}
     {{template "footer" .}}
 {{end}}

@@ -1,0 +1,10 @@
+{{define "_files"}}
+    <div>
+        <h3>Files</h3>
+        <ul>
+            {{range .Files}}
+                <li><a href="{{$.FilesPrefixURL}}{{.Name}}">{{.Name}}</a></li>
+            {{end}}
+        </ul>
+    </div>
+{{end}}

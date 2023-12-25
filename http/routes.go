@@ -5,12 +5,15 @@ import (
 	"github.com/devgianlu/go-fileshare"
 	"github.com/gofiber/fiber/v2"
 	"io/fs"
+	"net/http"
+	"path/filepath"
 	"time"
 )
 
 type indexViewData struct {
-	User  *fileshare.User
-	Files []fs.DirEntry
+	User           *fileshare.User
+	Files          []fs.DirEntry
+	FilesPrefixURL string
 }
 
 func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
@@ -25,7 +28,50 @@ func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Render("index", &indexViewData{User: user, Files: files})
+	return ctx.Render("index", &indexViewData{
+		User:           user,
+		Files:          files,
+		FilesPrefixURL: "/files/",
+	})
+}
+
+type filesViewData struct {
+	Files          []fs.DirEntry
+	FilesPrefixURL string
+}
+
+func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
+	user := fileshare.UserFromContext(ctx)
+	if user == nil {
+		return newHttpError(http.StatusForbidden, "cannot see files", fmt.Errorf("unauthenticated users cannot see files"))
+	}
+
+	var paths []string
+	for i := 1; true; i++ {
+		path := ctx.Params(fmt.Sprintf("*%d", i))
+		if len(path) == 0 {
+			break
+		}
+
+		paths = append(paths, path)
+	}
+
+	var dir string
+	if len(paths) > 0 {
+		dir = filepath.Join(paths...)
+	} else {
+		dir = "."
+	}
+
+	files, err := s.storage.ReadDir(dir, user)
+	if err != nil {
+		return err
+	}
+
+	return ctx.Render("files", &filesViewData{
+		Files:          files,
+		FilesPrefixURL: filepath.Clean(fmt.Sprintf("/files/%s", dir)) + "/",
+	})
 }
 
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {

@@ -1,8 +1,12 @@
 package fileshare
 
 import (
+	"errors"
 	"io/fs"
 )
+
+var ErrStorageReadForbidden = errors.New("user is not allowed to read from this location")
+var ErrStorageWriteForbidden = errors.New("user is not allowed to write to this location")
 
 type PathACL struct {
 	Path  string
