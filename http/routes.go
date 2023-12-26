@@ -5,8 +5,10 @@ import (
 	"github.com/devgianlu/go-fileshare"
 	"github.com/gofiber/fiber/v2"
 	"io/fs"
+	"math"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -31,7 +33,7 @@ func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 	return ctx.Render("index", &indexViewData{
 		User:           user,
 		Files:          files,
-		FilesPrefixURL: "/files/",
+		FilesPrefixURL: "/",
 	})
 }
 
@@ -70,8 +72,59 @@ func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
 
 	return ctx.Render("files", &filesViewData{
 		Files:          files,
-		FilesPrefixURL: filepath.Clean(fmt.Sprintf("/files/%s", dir)) + "/",
+		FilesPrefixURL: filepath.Clean(fmt.Sprintf("/%s", dir)) + "/",
 	})
+}
+
+func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
+	user := fileshare.UserFromContext(ctx)
+	if user == nil {
+		return newHttpError(http.StatusForbidden, "cannot download files", fmt.Errorf("unauthenticated users cannot download files"))
+	}
+
+	var paths []string
+	for i := 1; true; i++ {
+		path := ctx.Params(fmt.Sprintf("*%d", i))
+		if len(path) == 0 {
+			break
+		}
+
+		paths = append(paths, path)
+	}
+
+	var dir string
+	if len(paths) > 0 {
+		dir = filepath.Join(paths...)
+	} else {
+		dir = "."
+	}
+
+	file, err := s.storage.OpenFile(dir, user)
+	if err != nil {
+		return err
+	}
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		_ = file.Close()
+
+		// TODO: download tar.gz / zip archive for directory
+		return newHttpError(fiber.StatusNotImplemented, "directory download not implemented yet", fmt.Errorf("TODO download dir"))
+	} else {
+		ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", strconv.Quote(fileInfo.Name())))
+
+		if fileInfo.Size() >= math.MaxInt {
+			// download file chunked
+			return ctx.SendStream(file)
+		} else {
+			return ctx.SendStream(file, int(fileInfo.Size()))
+		}
+	}
 }
 
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {

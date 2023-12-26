@@ -3,7 +3,14 @@
         <h3>Files</h3>
         <ul>
             {{range .Files}}
-                <li><a href="{{$.FilesPrefixURL}}{{.Name}}">{{.Name}}</a></li>
+                <li>
+                    {{if .IsDir}}
+                        <a href="/files{{$.FilesPrefixURL}}{{.Name}}">{{.Name}}</a>
+                        <span><i>(directory)</i></span>
+                    {{else}}
+                        <a href="/download{{$.FilesPrefixURL}}{{.Name}}">{{.Name}}</a>
+                    {{end}}
+                </li>
             {{end}}
         </ul>
     </div>
