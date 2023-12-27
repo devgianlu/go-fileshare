@@ -25,7 +25,7 @@ func NewACLStorageProvider(storage fileshare.StorageProvider, defaultACL []files
 	return &aclStorageProvider{storage, defaultACL}, nil
 }
 
-func (p *aclStorageProvider) evalACL(path string, user *fileshare.User) (read bool, write bool) {
+func (p *aclStorageProvider) evalACL(path string, user *fileshare.User, write bool) bool {
 	if user.Admin {
 		panic("cannot evaluate ACL for admin user")
 	}
@@ -40,9 +40,16 @@ func (p *aclStorageProvider) evalACL(path string, user *fileshare.User) (read bo
 				return err
 			}
 
-			// ACL does not apply to this file
-			if strings.HasPrefix(rel, "../") {
-				continue
+			if write {
+				// For writes, do not allow writing to the parent directory
+				if strings.HasPrefix(rel, "..") {
+					continue
+				}
+			} else {
+				// For reads, allow reading the parent directory to see itself
+				if strings.HasPrefix(rel, "../") {
+					continue
+				}
 			}
 
 			acls = append(acls, acl)
@@ -54,7 +61,7 @@ func (p *aclStorageProvider) evalACL(path string, user *fileshare.User) (read bo
 	if err := filterAcls(user.ACL); err != nil {
 		log.WithError(err).WithField("module", "storage").
 			Errorf("failed evaluating user ACL for %s, bailing out", path)
-		return false, false
+		return false
 	}
 
 	// no user ACL defined for path, check default
@@ -62,15 +69,19 @@ func (p *aclStorageProvider) evalACL(path string, user *fileshare.User) (read bo
 		if err := filterAcls(p.defaultACL); err != nil {
 			log.WithError(err).WithField("module", "storage").
 				Errorf("failed evaluating default ACL for %s, bailing out", path)
-			return false, false
+			return false
 		}
 	}
 
 	// no ACL defined for path, default deny
 	if len(acls) == 0 {
-		return false, false
+		return false
 	} else if len(acls) == 1 {
-		return acls[0].Read, acls[0].Write
+		if write {
+			return acls[0].Write
+		} else {
+			return acls[0].Read
+		}
 	}
 
 	panic("unsupported") // FIXME: support multiple rules matching the path
@@ -81,7 +92,7 @@ func (p *aclStorageProvider) CreateFile(name string, user *fileshare.User) (io.W
 		return p.underlying.CreateFile(name)
 	}
 
-	_, write := p.evalACL(name, user)
+	write := p.evalACL(name, user, true)
 	if !write {
 		return nil, fileshare.NewError("cannot write file", fileshare.ErrStorageWriteForbidden, fmt.Errorf("user %s is not allowed to write to %s", user.Nickname, name))
 	}
@@ -94,7 +105,7 @@ func (p *aclStorageProvider) OpenFile(name string, user *fileshare.User) (io.Rea
 		return p.underlying.OpenFile(name)
 	}
 
-	read, _ := p.evalACL(name, user)
+	read := p.evalACL(name, user, false)
 	if !read {
 		return nil, nil, fileshare.NewError("cannot read file", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from %s", user.Nickname, name))
 	}
@@ -114,7 +125,7 @@ func (p *aclStorageProvider) ReadDir(name string, user *fileshare.User) ([]fs.Di
 
 	var allowedEntries []fs.DirEntry
 	for _, entry := range entries {
-		read, _ := p.evalACL(filepath.Join(name, entry.Name()), user)
+		read := p.evalACL(filepath.Join(name, entry.Name()), user, false)
 		if !read {
 			continue
 		}
@@ -130,6 +141,6 @@ func (p *aclStorageProvider) CanWrite(name string, user *fileshare.User) bool {
 		return true
 	}
 
-	_, write := p.evalACL(name, user)
+	write := p.evalACL(name, user, true)
 	return write
 }
