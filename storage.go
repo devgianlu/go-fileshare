@@ -20,6 +20,6 @@ type StorageProvider interface {
 }
 
 type AuthenticatedStorageProvider interface {
-	OpenFile(filename string, user *User) (fs.File, error)
+	OpenFile(name string, user *User) (fs.File, error)
 	ReadDir(name string, user *User) ([]fs.DirEntry, error)
 }

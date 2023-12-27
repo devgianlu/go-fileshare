@@ -92,14 +92,15 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 		paths = append(paths, path)
 	}
 
-	var dir string
+	var path string
 	if len(paths) > 0 {
-		dir = filepath.Join(paths...)
+		path = filepath.Join(paths...)
 	} else {
-		dir = "."
+		path = "."
 	}
 
-	file, err := s.storage.OpenFile(dir, user)
+	// open file for stats and eventually reading
+	file, err := s.storage.OpenFile(path, user)
 	if err != nil {
 		return err
 	}
@@ -111,10 +112,18 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 	}
 
 	if fileInfo.IsDir() {
+		// we don't need the file anymore
 		_ = file.Close()
 
-		// TODO: download tar.gz / zip archive for directory
-		return newHttpError(fiber.StatusNotImplemented, "directory download not implemented yet", fmt.Errorf("TODO download dir"))
+		// fix root archive name
+		name := fileInfo.Name()
+		if name == "." {
+			name = "files"
+		}
+
+		ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", strconv.Quote(name+".tar.gz")))
+
+		return compressFolderToArchive(s.storage, user, path, ctx)
 	} else {
 		ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", strconv.Quote(fileInfo.Name())))
 
