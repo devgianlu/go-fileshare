@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	"github.com/devgianlu/go-fileshare/auth"
 	"github.com/devgianlu/go-fileshare/http"
@@ -18,7 +19,8 @@ type Config struct {
 
 	DefaultACL []fileshare.PathACL `yaml:"default_acl"`
 
-	Users []fileshare.User `yaml:"users"`
+	Users []fileshare.User     `yaml:"users"`
+	Auths map[string]yaml.Node `yaml:"auths"`
 }
 
 func loadConfig() (*Config, error) {
@@ -50,6 +52,7 @@ func validateConfig(cfg *Config) {
 
 type Server struct {
 	Storage fileshare.AuthenticatedStorageProvider
+	Auth    map[string]fileshare.AuthProvider
 	Users   fileshare.UsersProvider
 	Tokens  fileshare.TokenProvider
 	HTTP    fileshare.HttpServer
@@ -79,7 +82,30 @@ func main() {
 
 	// setup tokens with JWT
 	if s.Tokens, err = auth.NewJsonWebTokenProvider([]byte(cfg.Secret)); err != nil {
-		log.WithError(err).WithField("module", "tokens").Fatalf("failed creating JWT provider")
+		log.WithError(err).WithField("module", "auth").Fatalf("failed creating JWT provider")
+	}
+
+	// setup authentication providers
+	s.Auth = map[string]fileshare.AuthProvider{}
+	for key, val := range cfg.Auths {
+		var provider fileshare.AuthProvider
+		switch key {
+		case auth.AuthProviderTypePassword:
+			var providerCfg fileshare.AuthPassword
+			if err := val.Decode(&providerCfg); err != nil {
+				log.WithError(err).WithField("module", "auth").Fatal("failed unmarshalling password provider config")
+			}
+
+			provider, err = auth.NewPasswordAuthProvider(providerCfg)
+		default:
+			err = fmt.Errorf("unknown provider %s", key)
+		}
+
+		if err != nil {
+			log.WithError(err).WithField("module", "auth").Fatalf("failed creating provider %s", key)
+		}
+
+		s.Auth[key] = provider
 	}
 
 	// setup storage with ACL
@@ -88,7 +114,7 @@ func main() {
 	}
 
 	// setup HTTP server
-	s.HTTP = http.NewHTTPServer(cfg.Port, s.Storage, s.Users, s.Tokens)
+	s.HTTP = http.NewHTTPServer(cfg.Port, s.Storage, s.Auth, s.Users, s.Tokens)
 
 	// listen
 	if err := s.HTTP.ListenForever(); err != nil {

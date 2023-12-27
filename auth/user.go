@@ -1,6 +1,8 @@
 package auth
 
-import "github.com/devgianlu/go-fileshare"
+import (
+	"github.com/devgianlu/go-fileshare"
+)
 
 type configUsersProvider struct {
 	users []fileshare.User

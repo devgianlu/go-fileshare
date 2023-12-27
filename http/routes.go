@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/devgianlu/go-fileshare"
+	"github.com/devgianlu/go-fileshare/auth"
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
 	"io"
@@ -199,6 +200,10 @@ func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {
 
 type loginBody struct {
 	Nickname string `schema:"nickname,required"`
+	Provider string `schema:"provider,required"`
+
+	// Only for "passwd" provider
+	Password string `schema:"password"`
 }
 
 func (s *httpServer) handlePostLogin(ctx *fiber.Ctx) error {
@@ -207,7 +212,27 @@ func (s *httpServer) handlePostLogin(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	// TODO: implement some sort of authentication
+	provider, ok := s.auth[body.Provider]
+	if !ok {
+		return newHttpError(fiber.StatusBadRequest, "invalid auth provider", fmt.Errorf("unknown auth provider: %s", body.Provider))
+	}
+
+	var providerPayload any
+	switch body.Provider {
+	case auth.AuthProviderTypePassword:
+		providerPayload = auth.PasswordAuthProviderPayload{Password: body.Password}
+	default:
+		panic("provider not implemented")
+	}
+
+	valid, err := provider.Valid(body.Nickname, providerPayload)
+	if err != nil {
+		return err
+	} else if !valid {
+		return newHttpError(fiber.StatusUnauthorized, "invalid auth credentials", fmt.Errorf("invalid credentials for %s with provider %s", body.Nickname, body.Provider))
+	}
+
+	// if we get here, authentication is good
 	user, err := s.users.GetUser(body.Nickname)
 	if err != nil {
 		return err

@@ -16,15 +16,17 @@ type httpServer struct {
 	app *fiber.App
 
 	storage fileshare.AuthenticatedStorageProvider
+	auth    map[string]fileshare.AuthProvider
 	tokens  fileshare.TokenProvider
 	users   fileshare.UsersProvider
 }
 
-func NewHTTPServer(port int, storage fileshare.AuthenticatedStorageProvider, users fileshare.UsersProvider, tokens fileshare.TokenProvider) fileshare.HttpServer {
+func NewHTTPServer(port int, storage fileshare.AuthenticatedStorageProvider, auth map[string]fileshare.AuthProvider, users fileshare.UsersProvider, tokens fileshare.TokenProvider) fileshare.HttpServer {
 	s := httpServer{}
 	s.log = logrus.WithField("module", "http")
 	s.port = port
 	s.storage = storage
+	s.auth = auth
 	s.users = users
 	s.tokens = tokens
 

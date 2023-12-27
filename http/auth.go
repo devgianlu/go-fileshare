@@ -36,6 +36,7 @@ func (s *httpServer) getUser(authHeader string, authCookie string) (*fileshare.U
 		return nil, fmt.Errorf("failed authenticating: %w", err)
 	}
 
+	// since the token is signed, we assume the user is authenticated
 	user, err := s.users.GetUser(nickname)
 	if err != nil {
 		return nil, fmt.Errorf("failed authenticating: %w", err)
