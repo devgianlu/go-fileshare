@@ -26,8 +26,11 @@ type indexViewData struct {
 func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 	user := fileshare.UserFromContext(ctx)
 
+	var canWrite bool
 	var files []fs.DirEntry
 	if user != nil {
+		canWrite = s.storage.CanWrite(".", user)
+
 		var err error
 		files, err = s.storage.ReadDir(".", user)
 		if err != nil {
@@ -39,7 +42,7 @@ func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 		User:              user,
 		Files:             files,
 		FilesPrefixURL:    "/",
-		FilesCanWriteHere: s.storage.CanWrite(".", user),
+		FilesCanWriteHere: canWrite,
 	})
 }
 
