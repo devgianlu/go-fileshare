@@ -1,4 +1,14 @@
 {{define "_files"}}
+    {{if .FilesCanWriteHere}}
+        <div>
+            <h3>Upload here</h3>
+            <form method="post" action="/upload{{$.FilesPrefixURL}}" enctype="multipart/form-data">
+                <input type="file" multiple name="file">
+                <button>Upload</button>
+            </form>
+        </div>
+        <hr>
+    {{end}}
     <div>
         <h3>Files (<a href="/download{{$.FilesPrefixURL}}">Download</a>)</h3>
         <ul>

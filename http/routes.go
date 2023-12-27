@@ -1,21 +1,26 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
+	"io"
 	"io/fs"
 	"math"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type indexViewData struct {
-	User           *fileshare.User
-	Files          []fs.DirEntry
-	FilesPrefixURL string
+	User              *fileshare.User
+	Files             []fs.DirEntry
+	FilesPrefixURL    string
+	FilesCanWriteHere bool
 }
 
 func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
@@ -31,15 +36,17 @@ func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Render("index", &indexViewData{
-		User:           user,
-		Files:          files,
-		FilesPrefixURL: "/",
+		User:              user,
+		Files:             files,
+		FilesPrefixURL:    "/",
+		FilesCanWriteHere: s.storage.CanWrite(".", user),
 	})
 }
 
 type filesViewData struct {
-	Files          []fs.DirEntry
-	FilesPrefixURL string
+	Files             []fs.DirEntry
+	FilesPrefixURL    string
+	FilesCanWriteHere bool
 }
 
 func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
@@ -71,8 +78,9 @@ func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Render("files", &filesViewData{
-		Files:          files,
-		FilesPrefixURL: filepath.Clean(fmt.Sprintf("/%s", dir)) + "/",
+		Files:             files,
+		FilesPrefixURL:    filepath.Clean(fmt.Sprintf("/%s", dir)) + "/",
+		FilesCanWriteHere: s.storage.CanWrite(dir, user),
 	})
 }
 
@@ -134,6 +142,57 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 			return ctx.SendStream(file, int(fileInfo.Size()))
 		}
 	}
+}
+
+func (s *httpServer) handleUpload(ctx *fiber.Ctx) error {
+	user := fileshare.UserFromContext(ctx)
+	if user == nil {
+		return newHttpError(http.StatusForbidden, "cannot upload files", fmt.Errorf("unauthenticated users cannot upload files"))
+	}
+
+	var paths []string
+	for i := 1; true; i++ {
+		path := ctx.Params(fmt.Sprintf("*%d", i))
+		if len(path) == 0 {
+			break
+		}
+
+		paths = append(paths, path)
+	}
+
+	var path string
+	if len(paths) > 0 {
+		path = filepath.Join(paths...)
+	} else {
+		path = "."
+	}
+
+	formFile, err := ctx.FormFile("file")
+	if errors.Is(err, fasthttp.ErrMissingFile) {
+		return newHttpError(http.StatusBadRequest, "missing file", err)
+	} else if err != nil {
+		return err
+	}
+
+	uploadFile, err := formFile.Open()
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = uploadFile.Close() }()
+
+	localFile, err := s.storage.CreateFile(filepath.Join(path, formFile.Filename), user)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = localFile.Close() }()
+
+	if _, err := io.Copy(localFile, uploadFile); err != nil {
+		return err
+	}
+
+	return ctx.Redirect("/files/" + strings.Join(paths, "/"))
 }
 
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {

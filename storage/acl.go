@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/devgianlu/go-fileshare"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -75,17 +76,30 @@ func (p *aclStorageProvider) evalACL(path string, user *fileshare.User) (read bo
 	panic("unsupported") // FIXME: support multiple rules matching the path
 }
 
-func (p *aclStorageProvider) OpenFile(filename string, user *fileshare.User) (fs.File, error) {
+func (p *aclStorageProvider) CreateFile(name string, user *fileshare.User) (io.WriteCloser, error) {
 	if user.Admin {
-		return p.underlying.OpenFile(filename)
+		return p.underlying.CreateFile(name)
 	}
 
-	read, _ := p.evalACL(filename, user)
+	_, write := p.evalACL(name, user)
+	if !write {
+		return nil, fileshare.NewError("cannot write file", fileshare.ErrStorageWriteForbidden, fmt.Errorf("user %s is not allowed to write to %s", user.Nickname, name))
+	}
+
+	return p.underlying.CreateFile(name)
+}
+
+func (p *aclStorageProvider) OpenFile(name string, user *fileshare.User) (fs.File, error) {
+	if user.Admin {
+		return p.underlying.OpenFile(name)
+	}
+
+	read, _ := p.evalACL(name, user)
 	if !read {
-		return nil, fileshare.NewError("cannot read file", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from %s", user.Nickname, filename))
+		return nil, fileshare.NewError("cannot read file", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from %s", user.Nickname, name))
 	}
 
-	return p.underlying.OpenFile(filename)
+	return p.underlying.OpenFile(name)
 }
 
 func (p *aclStorageProvider) ReadDir(name string, user *fileshare.User) ([]fs.DirEntry, error) {
@@ -109,4 +123,13 @@ func (p *aclStorageProvider) ReadDir(name string, user *fileshare.User) ([]fs.Di
 	}
 
 	return allowedEntries, nil
+}
+
+func (p *aclStorageProvider) CanWrite(name string, user *fileshare.User) bool {
+	if user.Admin {
+		return true
+	}
+
+	_, write := p.evalACL(name, user)
+	return write
 }

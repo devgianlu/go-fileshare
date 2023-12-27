@@ -49,6 +49,7 @@ func NewHTTPServer(port int, storage fileshare.AuthenticatedStorageProvider, use
 	s.app.Get("/", s.handleIndex)
 	s.app.Get("/files/*", s.handleFiles)
 	s.app.Get("/download/*", s.handleDownload)
+	s.app.Post("/upload/*", s.handleUpload)
 	s.app.Get("/login", s.handleLogin)
 	s.app.Post("/login", s.handlePostLogin)
 	s.app.Get("/logout", s.handleLogout)
