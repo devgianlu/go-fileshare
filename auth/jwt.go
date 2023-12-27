@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-type customClaims struct {
-	jwt.RegisteredClaims
-
-	// TODO: perhaps support anonymous user JWT without a subject?
-}
-
 type jsonWebTokenProvider struct {
 	secret []byte
 	parser *jwt.Parser
@@ -27,7 +21,7 @@ func (p *jsonWebTokenProvider) keyFunc(token *jwt.Token) (interface{}, error) {
 }
 
 func (p *jsonWebTokenProvider) GetUser(tokenString string) (string, error) {
-	token, err := p.parser.ParseWithClaims(tokenString, &customClaims{}, p.keyFunc)
+	token, err := p.parser.Parse(tokenString, p.keyFunc)
 	if err != nil {
 		return "", fileshare.NewError("", fileshare.ErrAuthMalformed, err)
 	}
@@ -36,19 +30,21 @@ func (p *jsonWebTokenProvider) GetUser(tokenString string) (string, error) {
 		return "", fileshare.NewError("", fileshare.ErrAuthInvalid, err)
 	}
 
-	claims := token.Claims.(*customClaims)
-	return claims.Subject, nil
+	subject, err := token.Claims.GetSubject()
+	if err != nil {
+		return "", err
+	}
+
+	return subject, nil
 }
 
 func (p *jsonWebTokenProvider) GetToken(nickname string) (string, error) {
 	now := time.Now()
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   nickname,
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
-		},
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
+		Subject:   nickname,
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
 	})
 
 	tokenString, err := token.SignedString(p.secret)
