@@ -89,14 +89,14 @@ func (p *aclStorageProvider) CreateFile(name string, user *fileshare.User) (io.W
 	return p.underlying.CreateFile(name)
 }
 
-func (p *aclStorageProvider) OpenFile(name string, user *fileshare.User) (fs.File, error) {
+func (p *aclStorageProvider) OpenFile(name string, user *fileshare.User) (io.ReadCloser, fs.FileInfo, error) {
 	if user.Admin {
 		return p.underlying.OpenFile(name)
 	}
 
 	read, _ := p.evalACL(name, user)
 	if !read {
-		return nil, fileshare.NewError("cannot read file", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from %s", user.Nickname, name))
+		return nil, nil, fileshare.NewError("cannot read file", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from %s", user.Nickname, name))
 	}
 
 	return p.underlying.OpenFile(name)

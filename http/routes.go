@@ -108,23 +108,14 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 	}
 
 	// open file for stats and eventually reading
-	file, err := s.storage.OpenFile(path, user)
+	file, stat, err := s.storage.OpenFile(path, user)
 	if err != nil {
 		return err
 	}
 
-	fileInfo, err := file.Stat()
-	if err != nil {
-		_ = file.Close()
-		return err
-	}
-
-	if fileInfo.IsDir() {
-		// we don't need the file anymore
-		_ = file.Close()
-
+	if stat.IsDir() {
 		// fix root archive name
-		name := fileInfo.Name()
+		name := stat.Name()
 		if name == "." {
 			name = "files"
 		}
@@ -133,13 +124,13 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 
 		return compressFolderToArchive(s.storage, user, path, ctx)
 	} else {
-		ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", strconv.Quote(fileInfo.Name())))
+		ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", strconv.Quote(stat.Name())))
 
-		if fileInfo.Size() >= math.MaxInt {
+		if stat.Size() >= math.MaxInt {
 			// download file chunked
 			return ctx.SendStream(file)
 		} else {
-			return ctx.SendStream(file, int(fileInfo.Size()))
+			return ctx.SendStream(file, int(stat.Size()))
 		}
 	}
 }

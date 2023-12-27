@@ -45,7 +45,7 @@ func compressFolderToArchive(storage fileshare.AuthenticatedStorageProvider, use
 				return err
 			}
 
-			file, err := storage.OpenFile(header.Name, user)
+			file, _, err := storage.OpenFile(header.Name, user)
 			if err != nil {
 				return err
 			}

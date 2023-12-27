@@ -17,13 +17,13 @@ type PathACL struct {
 
 type StorageProvider interface {
 	CreateFile(name string) (io.WriteCloser, error)
-	OpenFile(name string) (fs.File, error)
+	OpenFile(name string) (io.ReadCloser, fs.FileInfo, error)
 	ReadDir(name string) ([]fs.DirEntry, error)
 }
 
 type AuthenticatedStorageProvider interface {
 	CreateFile(name string, user *User) (io.WriteCloser, error)
-	OpenFile(name string, user *User) (fs.File, error)
+	OpenFile(name string, user *User) (io.ReadCloser, fs.FileInfo, error)
 	ReadDir(name string, user *User) ([]fs.DirEntry, error)
 	CanWrite(name string, user *User) bool
 }
