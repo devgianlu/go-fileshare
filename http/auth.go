@@ -27,7 +27,7 @@ func (s *httpServer) getUser(authHeader string, authCookie string) (*fileshare.U
 		return nil, nil
 	}
 
-	nickname, err := s.auth.GetUser(token)
+	nickname, err := s.tokens.GetUser(token)
 	if errors.Is(err, fileshare.ErrAuthMalformed) {
 		return nil, newHttpError(fiber.StatusBadRequest, "malformed bearer token", err)
 	} else if errors.Is(err, fileshare.ErrAuthInvalid) {

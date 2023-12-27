@@ -215,7 +215,7 @@ func (s *httpServer) handlePostLogin(ctx *fiber.Ctx) error {
 		return newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", body.Nickname))
 	}
 
-	token, err := s.auth.GetToken(user.Nickname)
+	token, err := s.tokens.GetToken(user.Nickname)
 	if err != nil {
 		return err
 	}

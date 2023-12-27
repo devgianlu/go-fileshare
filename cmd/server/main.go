@@ -51,7 +51,7 @@ func validateConfig(cfg *Config) {
 type Server struct {
 	Storage fileshare.AuthenticatedStorageProvider
 	Users   fileshare.UsersProvider
-	Auth    fileshare.AuthProvider
+	Tokens  fileshare.TokenProvider
 	HTTP    fileshare.HttpServer
 }
 
@@ -77,9 +77,9 @@ func main() {
 	// setup users provider
 	s.Users = auth.NewConfigUsersProvider(cfg.Users)
 
-	// setup authentication with JWT
-	if s.Auth, err = auth.NewJWTAuthProvider([]byte(cfg.Secret)); err != nil {
-		log.WithError(err).WithField("module", "auth").Fatalf("failed creating JWT auth provider")
+	// setup tokens with JWT
+	if s.Tokens, err = auth.NewJsonWebTokenProvider([]byte(cfg.Secret)); err != nil {
+		log.WithError(err).WithField("module", "tokens").Fatalf("failed creating JWT provider")
 	}
 
 	// setup storage with ACL
@@ -88,7 +88,7 @@ func main() {
 	}
 
 	// setup HTTP server
-	s.HTTP = http.NewHTTPServer(cfg.Port, s.Storage, s.Users, s.Auth)
+	s.HTTP = http.NewHTTPServer(cfg.Port, s.Storage, s.Users, s.Tokens)
 
 	// listen
 	if err := s.HTTP.ListenForever(); err != nil {

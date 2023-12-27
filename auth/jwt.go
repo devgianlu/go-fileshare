@@ -13,12 +13,12 @@ type customClaims struct {
 	// TODO: perhaps support anonymous user JWT without a subject?
 }
 
-type jwtAuthProvider struct {
+type jsonWebTokenProvider struct {
 	secret []byte
 	parser *jwt.Parser
 }
 
-func (p *jwtAuthProvider) keyFunc(token *jwt.Token) (interface{}, error) {
+func (p *jsonWebTokenProvider) keyFunc(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 		return nil, fmt.Errorf("unexpected signing method: %s", token.Header["alg"])
 	}
@@ -26,7 +26,7 @@ func (p *jwtAuthProvider) keyFunc(token *jwt.Token) (interface{}, error) {
 	return p.secret, nil
 }
 
-func (p *jwtAuthProvider) GetUser(tokenString string) (string, error) {
+func (p *jsonWebTokenProvider) GetUser(tokenString string) (string, error) {
 	token, err := p.parser.ParseWithClaims(tokenString, &customClaims{}, p.keyFunc)
 	if err != nil {
 		return "", fileshare.NewError("", fileshare.ErrAuthMalformed, err)
@@ -40,7 +40,7 @@ func (p *jwtAuthProvider) GetUser(tokenString string) (string, error) {
 	return claims.Subject, nil
 }
 
-func (p *jwtAuthProvider) GetToken(nickname string) (string, error) {
+func (p *jsonWebTokenProvider) GetToken(nickname string) (string, error) {
 	now := time.Now()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
@@ -59,12 +59,12 @@ func (p *jwtAuthProvider) GetToken(nickname string) (string, error) {
 	return tokenString, nil
 }
 
-func NewJWTAuthProvider(secret []byte) (fileshare.AuthProvider, error) {
+func NewJsonWebTokenProvider(secret []byte) (fileshare.TokenProvider, error) {
 	if len(secret) == 0 {
 		return nil, fmt.Errorf("missing secret")
 	}
 
-	p := jwtAuthProvider{}
+	p := jsonWebTokenProvider{}
 	p.secret = secret
 	p.parser = jwt.NewParser(
 		jwt.WithIssuedAt(),
