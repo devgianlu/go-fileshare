@@ -178,7 +178,7 @@ func main() {
 	}
 
 	// setup storage with ACL
-	storage.NewACLStorageProvider(storage.NewLocalStorageProvider(cfg.Path), cfg.DefaultACL)
+	s.Storage = storage.NewACLStorageProvider(storage.NewLocalStorageProvider(cfg.Path), cfg.DefaultACL)
 
 	// setup HTTP server
 	s.HTTP = http.NewHTTPServer(cfg.Port, cfg.AnonymousAccess, s.Storage, s.Auth, s.Users, s.Tokens)
