@@ -24,7 +24,7 @@ func (p *aclStorageProvider) evalACL(path string, user *fileshare.User, write bo
 		panic("cannot evaluate ACL for admin user")
 	}
 
-	path = filepath.Join("/", path)
+	path = filepath.Clean("/" + path)
 
 	var acls []fileshare.PathACL
 	filterAcls := func(list []fileshare.PathACL) error {
