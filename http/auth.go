@@ -53,6 +53,13 @@ func (s *httpServer) newAuthHandler() fiber.Handler {
 			return err
 		} else if user != nil {
 			fileshare.SetContextWithUser(ctx, user)
+		} else if s.anonymous {
+			user, err = s.users.GetUser(fileshare.UserNicknameAnonymous)
+			if err != nil {
+				return err
+			}
+
+			fileshare.SetContextWithUser(ctx, user)
 		}
 
 		return ctx.Next()

@@ -3,12 +3,20 @@
     <div>
         <h3>Authentication</h3>
         {{if .User }}
-            <p>Logged in as <b>{{.User.Nickname}}</b></p>
-            <p>Admin: <b>{{.User.Admin}}</b></p>
-            <form action="/logout">
-                <button>Logout</button>
-            </form>
+            {{if .User.Anonymous}}
+                <p>Not logged in (<b>anonymous</b>)</p>
+                <form action="/login">
+                    <button>Login</button>
+                </form>
+            {{else}}
+                <p>Logged in as <b>{{.User.Nickname}}</b></p>
+                <p>Admin: <b>{{.User.Admin}}</b></p>
+                <form action="/logout">
+                    <button>Logout</button>
+                </form>
+            {{end}}
         {{else}}
+            <p>Not logged in</p>
             <form action="/login">
                 <button>Login</button>
             </form>

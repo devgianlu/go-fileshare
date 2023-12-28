@@ -17,6 +17,8 @@ type Config struct {
 	Path     string `yaml:"path"`
 	LogLevel string `yaml:"log_level"`
 
+	AnonymousAccess bool `yaml:"anonymous_access"`
+
 	DefaultACL []fileshare.PathACL `yaml:"default_acl"`
 
 	Users []fileshare.User     `yaml:"users"`
@@ -42,11 +44,26 @@ func loadConfig() (*Config, error) {
 }
 
 func validateConfig(cfg *Config) {
+	var anonymousOk bool
 	for _, user := range cfg.Users {
 		// check admin does not have ACL
 		if user.Admin && len(user.ACL) > 0 {
 			log.WithField("module", "config").Warnf("redundant ACL for admin user %s", user.Nickname)
 		}
+
+		// check if user is anonymous
+		if user.Anonymous() {
+			if cfg.AnonymousAccess {
+				anonymousOk = true
+			} else {
+				log.WithField("module", "config").Warn("redundant anonymous user")
+			}
+		}
+	}
+
+	// check there is an "anonymous" user if anonymous access is enabled
+	if cfg.AnonymousAccess && !anonymousOk {
+		log.WithField("module", "config").Fatal("missing anonymous user")
 	}
 }
 
@@ -121,7 +138,7 @@ func main() {
 	}
 
 	// setup HTTP server
-	s.HTTP = http.NewHTTPServer(cfg.Port, s.Storage, s.Auth, s.Users, s.Tokens)
+	s.HTTP = http.NewHTTPServer(cfg.Port, cfg.AnonymousAccess, s.Storage, s.Auth, s.Users, s.Tokens)
 
 	// listen
 	if err := s.HTTP.ListenForever(); err != nil {

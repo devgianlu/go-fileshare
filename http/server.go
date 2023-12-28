@@ -10,7 +10,8 @@ import (
 )
 
 type httpServer struct {
-	port int
+	port      int
+	anonymous bool
 
 	log *logrus.Entry
 	app *fiber.App
@@ -21,10 +22,11 @@ type httpServer struct {
 	users   fileshare.UsersProvider
 }
 
-func NewHTTPServer(port int, storage fileshare.AuthenticatedStorageProvider, auth map[string]fileshare.AuthProvider, users fileshare.UsersProvider, tokens fileshare.TokenProvider) fileshare.HttpServer {
+func NewHTTPServer(port int, anonymous bool, storage fileshare.AuthenticatedStorageProvider, auth map[string]fileshare.AuthProvider, users fileshare.UsersProvider, tokens fileshare.TokenProvider) fileshare.HttpServer {
 	s := httpServer{}
 	s.log = logrus.WithField("module", "http")
 	s.port = port
+	s.anonymous = anonymous
 	s.storage = storage
 	s.auth = auth
 	s.users = users

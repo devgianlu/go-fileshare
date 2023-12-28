@@ -196,7 +196,7 @@ type loginViewData struct {
 }
 
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {
-	if user := fileshare.UserFromContext(ctx); user != nil {
+	if user := fileshare.UserFromContext(ctx); user != nil && !user.Anonymous() {
 		return ctx.Redirect("/")
 	}
 
