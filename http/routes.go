@@ -162,29 +162,36 @@ func (s *httpServer) handleUpload(ctx *fiber.Ctx) error {
 		path = "."
 	}
 
-	formFile, err := ctx.FormFile("file")
-	if errors.Is(err, fasthttp.ErrMissingFile) {
-		return newHttpError(http.StatusBadRequest, "missing file", err)
-	} else if err != nil {
-		return err
+	form, err := ctx.MultipartForm()
+	if errors.Is(err, fasthttp.ErrNoMultipartForm) {
+		return newHttpError(http.StatusBadRequest, "missing form", err)
 	}
 
-	uploadFile, err := formFile.Open()
-	if err != nil {
-		return err
+	formFiles, ok := form.File["file"]
+	if !ok {
+		return newHttpError(http.StatusBadRequest, "missing files", err)
 	}
 
-	defer func() { _ = uploadFile.Close() }()
+	for _, formFile := range formFiles {
+		uploadFile, err := formFile.Open()
+		if err != nil {
+			return err
+		}
 
-	localFile, err := s.storage.CreateFile(filepath.Join(path, formFile.Filename), user)
-	if err != nil {
-		return err
-	}
+		localFile, err := s.storage.CreateFile(filepath.Join(path, formFile.Filename), user)
+		if err != nil {
+			_ = uploadFile.Close()
+			return err
+		}
 
-	defer func() { _ = localFile.Close() }()
+		if _, err := io.Copy(localFile, uploadFile); err != nil {
+			_ = localFile.Close()
+			_ = uploadFile.Close()
+			return err
+		}
 
-	if _, err := io.Copy(localFile, uploadFile); err != nil {
-		return err
+		_ = localFile.Close()
+		_ = uploadFile.Close()
 	}
 
 	return ctx.Redirect("/files/" + strings.Join(paths, "/"))
