@@ -136,6 +136,15 @@ func (p *aclStorageProvider) ReadDir(name string, user *fileshare.User) ([]fs.Di
 	return allowedEntries, nil
 }
 
+func (p *aclStorageProvider) CanRead(name string, user *fileshare.User) bool {
+	if user.Admin {
+		return true
+	}
+
+	read := p.evalACL(name, user, false)
+	return read
+}
+
 func (p *aclStorageProvider) CanWrite(name string, user *fileshare.User) bool {
 	if user.Admin {
 		return true
