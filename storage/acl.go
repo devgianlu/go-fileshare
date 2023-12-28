@@ -15,14 +15,8 @@ type aclStorageProvider struct {
 	defaultACL []fileshare.PathACL
 }
 
-func NewACLStorageProvider(storage fileshare.StorageProvider, defaultACL []fileshare.PathACL) (fileshare.AuthenticatedStorageProvider, error) {
-	// errors
-	// - read false, write true not allowed
-	// - read false, write false redundant
-	// - path does not exist
-
-	// TODO: make sure all paths in ACL exist
-	return &aclStorageProvider{storage, defaultACL}, nil
+func NewACLStorageProvider(storage fileshare.StorageProvider, defaultACL []fileshare.PathACL) fileshare.AuthenticatedStorageProvider {
+	return &aclStorageProvider{storage, defaultACL}
 }
 
 func (p *aclStorageProvider) evalACL(path string, user *fileshare.User, write bool) bool {

@@ -19,14 +19,26 @@ type passwordAuthProvider struct {
 }
 
 func NewPasswordAuthProvider(auth fileshare.AuthPassword) (fileshare.AuthProvider, error) {
-	for _, user := range auth.Users {
+	for i, user := range auth.Users {
 		// check config is correct
 		if len(user.Nickname) == 0 || len(user.Passwd) == 0 {
 			return nil, fmt.Errorf("invalid config for %s", user.Nickname)
 		}
-	}
 
-	// TODO: check duplicate users
+		// check password is bcrypt
+		if _, err := bcrypt.Cost([]byte(user.Passwd)); err != nil {
+			return nil, fmt.Errorf("invalid bcrypt hash for %s: %w", user.Nickname, err)
+		}
+
+		// check no duplicates
+		for j, user_ := range auth.Users {
+			if i == j {
+				continue
+			} else if user.Nickname == user_.Nickname {
+				return nil, fmt.Errorf("duplicate user %s", user.Nickname)
+			}
+		}
+	}
 
 	return &passwordAuthProvider{auth.Users}, nil
 }

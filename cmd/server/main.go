@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -44,11 +45,55 @@ func loadConfig() (*Config, error) {
 }
 
 func validateConfig(cfg *Config) {
+	checkAcl := func(list []fileshare.PathACL) error {
+		for i, item := range list {
+			// check path is the shortest version
+			if item.Path != filepath.Clean(item.Path) {
+				return fmt.Errorf("path is not clean: %s", item.Path)
+			}
+
+			// check no duplicates
+			for j, item_ := range list {
+				if i == j {
+					continue
+				} else if item.Path == item_.Path {
+					return fmt.Errorf("duplicate path %s", item.Path)
+				}
+			}
+
+			// check it makes sense
+			if !item.Read && item.Write {
+				return fmt.Errorf("invalid read denied write allowed for %s", item.Path)
+			}
+		}
+
+		return nil
+	}
+
+	// check default ACL
+	if err := checkAcl(cfg.DefaultACL); err != nil {
+		log.WithField("module", "config").WithError(err).Fatal("invalid default ACL")
+	}
+
 	var anonymousOk bool
-	for _, user := range cfg.Users {
+	for i, user := range cfg.Users {
+		// check no duplicates
+		for j, user_ := range cfg.Users {
+			if i == j {
+				continue
+			} else if user.Nickname == user_.Nickname {
+				log.WithField("module", "config").Fatalf("duplicate user %s", user.Nickname)
+			}
+		}
+
 		// check admin does not have ACL
 		if user.Admin && len(user.ACL) > 0 {
 			log.WithField("module", "config").Warnf("redundant ACL for admin user %s", user.Nickname)
+		}
+
+		// check user ACL
+		if err := checkAcl(user.ACL); err != nil {
+			log.WithField("module", "config").WithError(err).Fatalf("invalid ACL for %s", user.Nickname)
 		}
 
 		// check if user is anonymous
@@ -133,9 +178,7 @@ func main() {
 	}
 
 	// setup storage with ACL
-	if s.Storage, err = storage.NewACLStorageProvider(storage.NewLocalStorageProvider(cfg.Path), cfg.DefaultACL); err != nil {
-		log.WithError(err).WithField("module", "storage").Fatalf("failed creating access controlled storage provider")
-	}
+	storage.NewACLStorageProvider(storage.NewLocalStorageProvider(cfg.Path), cfg.DefaultACL)
 
 	// setup HTTP server
 	s.HTTP = http.NewHTTPServer(cfg.Port, cfg.AnonymousAccess, s.Storage, s.Auth, s.Users, s.Tokens)
