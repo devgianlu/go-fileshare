@@ -1,0 +1,41 @@
+# Log level (trace, debug, info, warn, error)
+log_level: info
+# Listening port
+port: 8080
+# Secret for JWT token
+secret: CHANGE_ME
+# Where files are stored
+path: /data
+# Whether to allow anonymous access (configure with "anonymous" user)
+anonymous_access: true
+# Default ACL for all users (except admin)
+default_acl:
+  - path: /public
+    read: true
+    write: false
+# List of users allowed with their ACL
+users:
+  - nickname: admin
+    admin: true
+  - nickname: anonymous
+    admin: false
+  - nickname: pippo
+    admin: false
+    acl:
+      - path: /users/pippo
+        read: true
+        write: true
+# List of authentication methods
+auths:
+  # Password authentication with list of users and bcrypt hashes
+  passwd:
+    users:
+      - nickname: admin
+        passwd: $2a$12$HBrXAoV1ZQKbT6my3b4OK.9q4Us53bhh7glDeupexcq3Af1CzBKA2 # test1234
+      - nickname: pippo
+        passwd: $2a$12$HBrXAoV1ZQKbT6my3b4OK.9q4Us53bhh7glDeupexcq3Af1CzBKA2 # test1234
+  # GitHub OAuth2 authentication
+  github:
+    callback_base_url: http://localhost:8080
+    client_id: 00000000000000000000
+    client_secret: 0000000000000000000000000000000000000000

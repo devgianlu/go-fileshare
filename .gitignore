@@ -1,4 +1,6 @@
 /server.yml
+/docker-compose.yml
+/data
 
 /.vscode
 /.idea

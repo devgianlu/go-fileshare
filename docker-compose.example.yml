@@ -1,0 +1,9 @@
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    volumes:
+      - ./data:/data
+      - ./server.example.yml:/server.yml:ro
