@@ -10,6 +10,7 @@ import (
 const AuthProviderTypePassword = "passwd"
 
 type PasswordAuthProviderPayload struct {
+	Nickname string
 	Password string
 }
 
@@ -30,25 +31,25 @@ func NewPasswordAuthProvider(auth fileshare.AuthPassword) (fileshare.AuthProvide
 	return &passwordAuthProvider{auth.Users}, nil
 }
 
-func (p *passwordAuthProvider) Valid(nickname string, payload_ any) (bool, error) {
+func (p *passwordAuthProvider) Authenticate(payload_ any) (string, error) {
 	payload, ok := payload_.(PasswordAuthProviderPayload)
 	if !ok {
 		panic("invalid payload type")
 	}
 
 	for _, user := range p.users {
-		if user.Nickname != nickname {
+		if user.Nickname != payload.Nickname {
 			continue
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Passwd), []byte(payload.Password)); errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return false, nil
+			return "", fmt.Errorf("wrong password for %s", user.Nickname)
 		} else if err != nil {
-			return false, err
+			return "", err
 		} else {
-			return true, nil
+			return user.Nickname, nil
 		}
 	}
 
-	return false, nil
+	return "", fmt.Errorf("user %s not found", payload.Nickname)
 }

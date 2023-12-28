@@ -54,6 +54,7 @@ func NewHTTPServer(port int, storage fileshare.AuthenticatedStorageProvider, aut
 	s.app.Post("/upload/*", s.handleUpload)
 	s.app.Get("/login", s.handleLogin)
 	s.app.Post("/login", s.handlePostLogin)
+	s.app.Get("/login/:provider/callback", s.handleOauthLoginCallback)
 	s.app.Get("/logout", s.handleLogout)
 	s.app.Use(func(ctx *fiber.Ctx) error {
 		ctx.Status(fiber.StatusNotFound)

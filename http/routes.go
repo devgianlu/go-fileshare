@@ -190,19 +190,30 @@ func (s *httpServer) handleUpload(ctx *fiber.Ctx) error {
 	return ctx.Redirect("/files/" + strings.Join(paths, "/"))
 }
 
+type loginViewData struct {
+	PasswordAuth bool
+	GithubAuth   bool
+}
+
 func (s *httpServer) handleLogin(ctx *fiber.Ctx) error {
 	if user := fileshare.UserFromContext(ctx); user != nil {
 		return ctx.Redirect("/")
 	}
 
-	return ctx.Render("login", &fiber.Map{})
+	_, passwordOk := s.auth[auth.AuthProviderTypePassword]
+	_, githubOk := s.auth[auth.AuthProviderTypeGithub]
+
+	return ctx.Render("login", &loginViewData{
+		PasswordAuth: passwordOk,
+		GithubAuth:   githubOk,
+	})
 }
 
 type loginBody struct {
-	Nickname string `schema:"nickname,required"`
 	Provider string `schema:"provider,required"`
 
 	// Only for "passwd" provider
+	Nickname string `schema:"nickname"`
 	Password string `schema:"password"`
 }
 
@@ -217,30 +228,77 @@ func (s *httpServer) handlePostLogin(ctx *fiber.Ctx) error {
 		return newHttpError(fiber.StatusBadRequest, "invalid auth provider", fmt.Errorf("unknown auth provider: %s", body.Provider))
 	}
 
-	var providerPayload any
-	switch body.Provider {
-	case auth.AuthProviderTypePassword:
-		providerPayload = auth.PasswordAuthProviderPayload{Password: body.Password}
+	switch provider := provider.(type) {
+	case fileshare.OAuth2AuthProvider:
+		url, err := provider.Callback()
+		if err != nil {
+			return err
+		}
+
+		return ctx.Redirect(url)
 	default:
-		panic("provider not implemented")
+		var providerPayload any
+		switch body.Provider {
+		case auth.AuthProviderTypePassword:
+			providerPayload = auth.PasswordAuthProviderPayload{Nickname: body.Nickname, Password: body.Password}
+		default:
+			panic("provider not implemented")
+		}
+
+		nickname, err := provider.Authenticate(providerPayload)
+		if err != nil {
+			return newHttpError(fiber.StatusUnauthorized, "invalid auth credentials", err)
+		}
+
+		// if we get here, authentication is good
+		user, err := s.users.GetUser(nickname)
+		if err != nil {
+			return err
+		} else if user == nil {
+			return newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", body.Nickname))
+		}
+
+		token, err := s.tokens.GetToken(nickname)
+		if err != nil {
+			return err
+		}
+
+		ctx.Cookie(&fiber.Cookie{Name: authTokenCookieName, Value: token, HTTPOnly: true, Expires: time.Now().Add(7 * 24 * time.Hour)})
+		return ctx.Redirect("/")
+	}
+}
+
+func (s *httpServer) handleOauthLoginCallback(ctx *fiber.Ctx) error {
+	code, state := ctx.Query("code"), ctx.Query("state")
+	if len(code) == 0 || len(state) == 0 {
+		return newHttpError(fiber.StatusBadRequest, "missing code or state", fmt.Errorf("missing code (%s) or state (%s)", code, state))
 	}
 
-	valid, err := provider.Valid(body.Nickname, providerPayload)
+	providerKey := ctx.Params("provider")
+	provider_, ok := s.auth[providerKey]
+	if !ok {
+		return newHttpError(fiber.StatusBadRequest, "provider not available", fmt.Errorf("auth provider %s is not configured", providerKey))
+	}
+
+	provider, ok := provider_.(fileshare.OAuth2AuthProvider)
+	if !ok {
+		return newHttpError(fiber.StatusBadRequest, "provider not available", fmt.Errorf("auth provider %s is not oauth2", providerKey))
+	}
+
+	nickname, err := provider.Authenticate(fileshare.OAuth2ProviderPayload{Code: code, State: state})
 	if err != nil {
-		return err
-	} else if !valid {
-		return newHttpError(fiber.StatusUnauthorized, "invalid auth credentials", fmt.Errorf("invalid credentials for %s with provider %s", body.Nickname, body.Provider))
+		return newHttpError(fiber.StatusUnauthorized, "invalid auth credentials", err)
 	}
 
 	// if we get here, authentication is good
-	user, err := s.users.GetUser(body.Nickname)
+	user, err := s.users.GetUser(nickname)
 	if err != nil {
 		return err
 	} else if user == nil {
-		return newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", body.Nickname))
+		return newHttpError(fiber.StatusForbidden, "unknown user", fmt.Errorf("no user for nickname %s", nickname))
 	}
 
-	token, err := s.tokens.GetToken(user.Nickname)
+	token, err := s.tokens.GetToken(nickname)
 	if err != nil {
 		return err
 	}

@@ -93,10 +93,17 @@ func main() {
 		case auth.AuthProviderTypePassword:
 			var providerCfg fileshare.AuthPassword
 			if err := val.Decode(&providerCfg); err != nil {
-				log.WithError(err).WithField("module", "auth").Fatal("failed unmarshalling password provider config")
+				log.WithError(err).WithField("module", "auth").Fatal("failed unmarshalling password auth provider config")
 			}
 
 			provider, err = auth.NewPasswordAuthProvider(providerCfg)
+		case auth.AuthProviderTypeGithub:
+			var providerCfg fileshare.AuthGithub
+			if err := val.Decode(&providerCfg); err != nil {
+				log.WithError(err).WithField("module", "auth").Fatal("failed unmarshalling github auth provider config")
+			}
+
+			provider, err = auth.NewGithubAuthProvider(providerCfg)
 		default:
 			err = fmt.Errorf("unknown provider %s", key)
 		}

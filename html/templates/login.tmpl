@@ -1,18 +1,36 @@
 {{define "login"}}
     {{template "header" .}}
-    <div>
-        <form method="post">
-            <label>
-                Nickname
-                <input type="text" name="nickname" placeholder="Nickname">
-            </label>
-            <label>
-                Password
-                <input type="password" name="password" placeholder="Password">
-            </label>
-            <input type="hidden" name="provider" value="passwd">
-            <button>Login</button>
-        </form>
-    </div>
+    {{if .PasswordAuth}}
+        <div>
+            <h3>Password</h3>
+            <form method="post">
+                <p>
+                    <label>
+                        Nickname
+                        <input type="text" name="nickname" placeholder="Nickname">
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Password
+                        <input type="password" name="password" placeholder="Password">
+                    </label>
+                </p>
+                <input type="hidden" name="provider" value="passwd">
+                <button>Login</button>
+            </form>
+        </div>
+        <hr>
+    {{end}}
+    {{if .GithubAuth}}
+        <div>
+            <h3>Github</h3>
+            <form method="post">
+                <input type="hidden" name="provider" value="github">
+                <button>Login with GitHub</button>
+            </form>
+        </div>
+        <hr>
+    {{end}}
     {{template "footer" .}}
 {{end}}

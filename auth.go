@@ -19,6 +19,22 @@ type AuthPassword struct {
 	Users []AuthPasswordUser
 }
 
+type AuthGithub struct {
+	CallbackBaseURL string `yaml:"callback_base_url"`
+	ClientID        string `yaml:"client_id"`
+	ClientSecret    string `yaml:"client_secret"`
+}
+
+type OAuth2ProviderPayload struct {
+	Code  string
+	State string
+}
+
+type OAuth2AuthProvider interface {
+	AuthProvider
+	Callback() (string, error)
+}
+
 type AuthProvider interface {
-	Valid(nickname string, payload any) (bool, error)
+	Authenticate(payload any) (string, error)
 }
