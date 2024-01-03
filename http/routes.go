@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"math"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
 			break
 		}
 
+		path, _ = url.PathUnescape(path)
 		paths = append(paths, path)
 	}
 
@@ -101,6 +103,7 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 			break
 		}
 
+		path, _ = url.PathUnescape(path)
 		paths = append(paths, path)
 	}
 
@@ -152,6 +155,7 @@ func (s *httpServer) handleUpload(ctx *fiber.Ctx) error {
 			break
 		}
 
+		path, _ = url.PathUnescape(path)
 		paths = append(paths, path)
 	}
 
