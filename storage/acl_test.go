@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"github.com/devgianlu/go-fileshare"
 	"io"
 	"io/fs"
@@ -144,7 +145,7 @@ func TestAclStorageProvider_CanWrite(t *testing.T) {
 	}
 }
 
-func TestAclStorageProvider_ReadDir(t *testing.T) {
+func TestAclStorageProvider_ReadDir1(t *testing.T) {
 	user := &fileshare.User{
 		Nickname: "test",
 		Admin:    false,
@@ -177,6 +178,32 @@ func TestAclStorageProvider_ReadDir(t *testing.T) {
 	for _, payload := range payloads {
 		if entries, _ := storage.ReadDir(payload, user); len(entries) != 1 || entries[0].Name() != "test" {
 			t.Fatalf("%s: expected \"test\" entry, got %v", payload, entries)
+		}
+	}
+}
+
+func TestAclStorageProvider_ReadDir2(t *testing.T) {
+	user := &fileshare.User{
+		Nickname: "test",
+		Admin:    false,
+		ACL:      []fileshare.PathACL{},
+	}
+
+	storage := NewACLStorageProvider(&mockStorageProvider{
+		dirEntries: []fs.DirEntry{
+			&mockDirEntry{"bar.txt", false},
+			&mockDirEntry{"baz.txt", false},
+		},
+	}, nil)
+
+	payloads := []string{
+		"/test",
+		"/test/foo",
+		"/test/foo/bar",
+	}
+	for _, payload := range payloads {
+		if _, err := storage.ReadDir(payload, user); !errors.Is(err, fileshare.ErrStorageReadForbidden) {
+			t.Fatalf("%s: expected read forbidden error, got %v", payload, err)
 		}
 	}
 }
