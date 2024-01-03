@@ -35,7 +35,9 @@ func (s *httpServer) handleIndex(ctx *fiber.Ctx) error {
 
 		var err error
 		files, err = s.storage.ReadDir(".", user)
-		if err != nil {
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fileshare.ErrStorageReadForbidden) {
+			return newHttpError(fiber.StatusNotFound, "directory not found", err)
+		} else if err != nil {
 			return err
 		}
 	}
@@ -79,7 +81,9 @@ func (s *httpServer) handleFiles(ctx *fiber.Ctx) error {
 	}
 
 	files, err := s.storage.ReadDir(dir, user)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fileshare.ErrStorageReadForbidden) {
+		return newHttpError(fiber.StatusNotFound, "directory not found", err)
+	} else if err != nil {
 		return err
 	}
 
@@ -116,7 +120,9 @@ func (s *httpServer) handleDownload(ctx *fiber.Ctx) error {
 
 	// open file for stats and eventually reading
 	file, stat, err := s.storage.OpenFile(path, user)
-	if err != nil {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fileshare.ErrStorageReadForbidden) {
+		return newHttpError(fiber.StatusNotFound, "file not found", err)
+	} else if err != nil {
 		return err
 	}
 
