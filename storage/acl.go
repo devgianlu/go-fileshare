@@ -112,6 +112,11 @@ func (p *aclStorageProvider) ReadDir(name string, user *fileshare.User) ([]fs.Di
 		return p.underlying.ReadDir(name)
 	}
 
+	read := p.evalACL(name, user, false)
+	if !read {
+		return nil, fileshare.NewError("cannot read directory", fileshare.ErrStorageReadForbidden, fmt.Errorf("user %s is not allowed to read from directory %s", user.Nickname, name))
+	}
+
 	entries, err := p.underlying.ReadDir(name)
 	if err != nil {
 		return nil, err
