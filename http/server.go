@@ -33,7 +33,8 @@ func NewHTTPServer(port int, anonymous bool, storage fileshare.AuthenticatedStor
 	s.tokens = tokens
 
 	s.app = fiber.New(fiber.Config{
-		Views: html.NewEngine(),
+		Views:             html.NewEngine(),
+		StreamRequestBody: true,
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
 			// prevent our errors from propagating, they have already been handled
 			if ok, _, _ := asHttpError(err); ok {
